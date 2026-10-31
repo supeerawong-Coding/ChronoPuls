@@ -41,6 +41,7 @@ const els = {
   tabs: $$('.mode-tab'),
   statusPill: $('#status-pill'),
   statusText: $('#status-text'),
+  time: $('#time-display'),
   timeMain: $('#time-main'),
   timeFraction: $('#time-fraction'),
   caption: $('#time-caption'),
@@ -95,6 +96,7 @@ function renderStopwatch() {
 
   els.timeMain.textContent = main;
   els.timeFraction.textContent = fraction;
+  els.time.classList.toggle('is-long', main.length >= 8);
 
   // วงแหวนกวาดครบรอบทุก ๆ 1 นาที เหมือนเข็มวินาที
   ring.setProgress((ms % 60000) / 60000);
@@ -118,8 +120,10 @@ function renderTimer() {
   const ms = timer.current;
   const state = timer.state; // idle | running | paused | finished
   const visual = state === 'idle' ? 'ready' : state;
+  const mainText = formatDuration(ms);
 
-  els.timeMain.textContent = formatDuration(ms);
+  els.timeMain.textContent = mainText;
+  els.time.classList.toggle('is-long', mainText.length >= 8);
   ring.setProgress(timer.progress);
   ring.setState(visual);
   ring.setLow(state === 'running' && timer.duration > 0 && timer.progress <= 0.12);
