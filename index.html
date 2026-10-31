@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ChronoPulse — เว็บนาฬิกาจับเวลา (Stopwatch) และนับถอยหลัง (Timer) พร้อม Circular Progress Ring, โหมดมืด/สว่าง และการบันทึกรอบ" />
+  <meta name="theme-color" content="#070a12" />
+  <title>ChronoPulse — นาฬิกาจับเวลา &amp; นับถอยหลัง</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+
+  <!-- ตั้งค่าธีมก่อน render เพื่อไม่ให้กระพริบตอนเปิดเว็บ -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('chronopulse:theme');
+        var theme = null;
+        if (saved === '"light"' || saved === 'light') theme = 'light';
+        else if (saved === '"dark"' || saved === 'dark') theme = 'dark';
+        if (!theme) theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+      } catch (e) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap"
+  />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="ChronoPulse หน้าหลัก">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="13.5" r="7.5" stroke="currentColor" stroke-width="1.8" />
+            <path d="M12 9.5v4l2.6 1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9.5 2.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <path d="M2.5 13.5h2.2l1.4-3 1.8 5.4 1.6-3.6 1.2 1.2h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".9" />
+          </svg>
+        </span>
+        <span class="brand-name">Chrono<em>Pulse</em></span>
+      </a>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" id="sound-toggle" type="button" aria-pressed="true" title="ปิดเสียงแจ้งเตือน">
+          <svg class="icon icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5z" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <svg class="icon icon-sound-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5z" />
+            <path d="m22 9-6 6" />
+            <path d="m16 9 6 6" />
+          </svg>
+          <span class="sr-only">เปิดหรือปิดเสียงแจ้งเตือน</span>
+        </button>
+
+        <button class="icon-btn" id="theme-toggle" type="button" title="สลับโหมดมืด/สว่าง">
+          <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+          <span class="sr-only">สลับระหว่างโหมดมืดและโหมดสว่าง</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="mode-tabs" role="tablist" aria-label="เลือกโหมดจับเวลา" style="--active: 0">
+      <span class="mode-tabs-indicator" aria-hidden="true"></span>
+      <button class="mode-tab is-active" id="tab-stopwatch" type="button" role="tab" aria-selected="true" aria-controls="controls-stopwatch" data-mode="stopwatch">
+        จับเวลา
+      </button>
+      <button class="mode-tab" id="tab-timer" type="button" role="tab" aria-selected="false" aria-controls="controls-timer" data-mode="timer">
+        นับถอยหลัง
+      </button>
+    </div>
+
+    <main class="stage">
+      <section class="stage-clock" aria-label="หน้าปัดนาฬิกา">
+        <div class="ring" id="ring" data-state="ready">
+          <svg class="ring-svg" viewBox="0 0 360 360" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop class="stop-a" offset="0%" />
+                <stop class="stop-b" offset="100%" />
+              </linearGradient>
+            </defs>
+            <circle class="ring-track" cx="180" cy="180" r="160" />
+            <circle class="ring-progress" id="ring-progress" cx="180" cy="180" r="160" />
+          </svg>
+
+          <div class="ring-face">
+            <p class="status-pill" id="status-pill" data-state="ready" role="status" aria-live="polite">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="status-text">พร้อม</span>
+            </p>
+
+            <div class="time" id="time-display">
+              <span class="time-main" id="time-main">00:00</span><span class="time-fraction" id="time-fraction">.00</span>
+            </div>
+
+            <p class="time-caption" id="time-caption">กดปุ่มเริ่มเพื่อจับเวลา</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ปุ่มควบคุม: จับเวลา -->
+      <section class="controls" id="controls-stopwatch" aria-label="ปุ่มควบคุมโหมดจับเวลา">
+        <button class="btn btn-quiet" id="sw-reset" type="button" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 2v6h6" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8" />
+          </svg>
+          <span>รีเซ็ต</span>
+        </button>
+
+        <button class="btn btn-primary" id="sw-toggle" type="button" data-state="idle">
+          <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a.8.8 0 0 0 1.22.68l10.6-6.8a.8.8 0 0 0 0-1.36L9.22 4.52A.8.8 0 0 0 8 5.2Z" fill="currentColor" /></svg>
+          <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1.3" fill="currentColor" />
+            <rect x="14" y="5" width="4" height="14" rx="1.3" fill="currentColor" />
+          </svg>
+          <span id="sw-toggle-label">เริ่ม</span>
+        </button>
+
+        <button class="btn btn-quiet" id="sw-lap" type="button" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+            <path d="M4 22v-7" />
+          </svg>
+          <span>บันทึกรอบ</span>
+        </button>
+      </section>
+
+      <!-- ปุ่มควบคุม: นับถอยหลัง -->
+      <section class="controls" id="controls-timer" aria-label="ปุ่มควบคุมโหมดนับถอยหลัง" hidden>
+        <button class="btn btn-quiet" id="tm-reset" type="button">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 2v6h6" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8" />
+          </svg>
+          <span>รีเซ็ต</span>
+        </button>
+
+        <button class="btn btn-primary" id="tm-toggle" type="button" data-state="idle">
+          <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a.8.8 0 0 0 1.22.68l10.6-6.8a.8.8 0 0 0 0-1.36L9.22 4.52A.8.8 0 0 0 8 5.2Z" fill="currentColor" /></svg>
+          <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1.3" fill="currentColor" />
+            <rect x="14" y="5" width="4" height="14" rx="1.3" fill="currentColor" />
+          </svg>
+          <span id="tm-toggle-label">เริ่ม</span>
+        </button>
+
+        <button class="btn btn-quiet" id="tm-add" type="button" hidden>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>1 นาที</span>
+        </button>
+      </section>
+
+      <!-- ตั้งเวลานับถอยหลัง -->
+      <section class="setup" id="timer-setup" aria-label="ตั้งเวลานับถอยหลัง" hidden>
+        <h2 class="setup-title">ตั้งเวลานับถอยหลัง</h2>
+
+        <div class="presets" id="timer-presets">
+          <button class="chip" type="button" data-seconds="60">1 นาที</button>
+          <button class="chip" type="button" data-seconds="180">3 นาที</button>
+          <button class="chip" type="button" data-seconds="300">5 นาที</button>
+          <button class="chip" type="button" data-seconds="600">10 นาที</button>
+          <button class="chip" type="button" data-seconds="900">15 นาที</button>
+          <button class="chip" type="button" data-seconds="1800">30 นาที</button>
+        </div>
+
+        <div class="duration-inputs">
+          <label class="duration-field">
+            <input id="input-hours" type="number" min="0" max="99" step="1" value="0" inputmode="numeric" aria-label="ชั่วโมง" />
+            <span>ชั่วโมง</span>
+          </label>
+          <span class="duration-sep" aria-hidden="true">:</span>
+          <label class="duration-field">
+            <input id="input-minutes" type="number" min="0" max="59" step="1" value="5" inputmode="numeric" aria-label="นาที" />
+            <span>นาที</span>
+          </label>
+          <span class="duration-sep" aria-hidden="true">:</span>
+          <label class="duration-field">
+            <input id="input-seconds" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-label="วินาที" />
+            <span>วินาที</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- รายการรอบ -->
+      <section class="laps" id="laps" aria-label="รายการรอบที่บันทึก" hidden>
+        <header class="laps-head">
+          <h2>รอบที่บันทึก <span class="laps-count" id="laps-count">0</span></h2>
+          <div class="laps-actions">
+            <button class="btn btn-quiet btn-sm" id="laps-copy" type="button">คัดลอก</button>
+            <button class="btn btn-quiet btn-sm" id="laps-clear" type="button">ล้าง</button>
+          </div>
+        </header>
+        <ol class="lap-list" id="lap-list"></ol>
+      </section>
+
+      <noscript>
+        <p class="noscript-note">เว็บนี้ต้องใช้ JavaScript ในการทำงาน — กรุณาเปิดใช้งาน JavaScript แล้วลองใหม่</p>
+      </noscript>
+    </main>
+
+    <footer class="footer">
+      <p class="kbd-hints">
+        <kbd>Space</kbd> เริ่ม/หยุด
+        <span aria-hidden="true">·</span>
+        <kbd>R</kbd> รีเซ็ต
+        <span aria-hidden="true">·</span>
+        <kbd>L</kbd> บันทึกรอบ
+      </p>
+      <p class="footer-note">ChronoPulse ทำงาน offline ในเบราว์เซอร์ — บันทึกเฉพาะธีมและค่าเวลาที่คุณตั้งไว้ในเครื่อง</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
